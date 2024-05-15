@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Prompt</title>
+</head>
+<body>
+    <h1>Model Prompt</h1>
+    <form action="/" method="post">
+        <label for="prompt">Enter Prompt:</label><br>
+        <textarea id="prompt" name="prompt" rows="4" cols="50"></textarea><br>
+        <input type="submit" value="Submit">
+    </form>
+    {% if prompt %}
+    <h2>Generated Text:</h2>
+    <p>{{ generated_text }}</p>
+    <img src="data:image/jpeg;base64,{{ image }}" alt="Generated Image">
+    {% endif %}
+</body>
+</html>
