@@ -1,0 +1,75 @@
+:root {
+  --bg-color: #222831;
+  --content-bg-color: #393e46;
+  --btn-bg-color: #00adb5;
+  --btn-bg-color-hover: #09c7d1;
+  --text-color: #eeeeee;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  font-size: 70px;
+}
+
+.hidden {
+  display: none;
+}
+
+.btn {
+  border: none;
+  color: var(--text-color);
+  background-color: var(--btn-bg-color);
+}
+
+.btn:hover {
+  background-color: var(--btn-bg-color-hover);
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+.vertical-line {
+  border-right: 1px dashed var(--text-color);
+}
+
+.item {
+  width: 70%;
+  display: inline-block;
+  margin-top: 2rem;
+  transition: all 0.35s;
+}
+:hover {
+  transform: scale(1, 1) rotate(0deg) !important;
+  transition: all 0.35s;
+}
+
+#user-image {
+  transform: scale(0.8, 0.8) rotate(3deg);
+}
+#optimized-image {
+  transform: scale(0.8, 0.8) rotate(-2deg);
+}
+
+.polaroid {
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 0.2rem 1.2rem rgba(0, 0, 0, 0.2);
+}
+.polaroid > img {
+  max-width: 100%;
+  height: auto;
+}
+.caption {
+  font-size: 1.2rem;
+  text-align: center;
+  line-height: 2em;
+  color: var(--content-bg-color);
+}
