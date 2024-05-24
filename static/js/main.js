@@ -1,7 +1,19 @@
+var first_image = true;
+
 function sendRequest(route, resultHandler) {
   // Get the data to send to the server
+  var settings = {
+    sampler_name: document.getElementById("setting-sampler").value,
+    steps: document.getElementById("setting-steps").value,
+    height: document.getElementById("setting-height").value,
+    width: document.getElementById("setting-width").value,
+    cfg_scale: document.getElementById("setting-cfg").value,
+    seed: document.getElementById("setting-seed").value,
+  };
+  console.log(settings);
   var data = {
     user_prompt: document.getElementById("prompt").value,
+    settings: settings,
   };
 
   // Send a POST request to Flask route
@@ -34,7 +46,22 @@ function setInnerHTML(selectors, values) {
   });
 }
 
+function updateProgress() {
+  fetch("/api/progress")
+    .then((response) => response.json())
+    .then((data) => {
+      let progress = data.progress;
+      // document.getElementById("progress-bar").style.width = progress + "%";
+      document.querySelector("#generation-progress > div").style.width = progress + "%";
+      document.querySelector("#generation-progress > div").innerHTML = progress + "%";
+      if (first_image && progress < 100) {
+        setTimeout(updateProgress, 500); // Check progress every second
+      }
+    });
+}
+
 document.getElementById("generate").addEventListener("click", function () {
+  first_image = true;
   sendRequest("/api/get_image", function (result) {
     let response = result;
     setInnerHTML(
@@ -44,5 +71,7 @@ document.getElementById("generate").addEventListener("click", function () {
     document.querySelector("#user-image img").setAttribute("src", response.user_image);
     document.querySelector("#optimized-image img").setAttribute("src", response.optimized_image);
     document.getElementById("images").classList.remove("hidden");
+    first_image = false;
   });
+  updateProgress();
 });
