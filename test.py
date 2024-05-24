@@ -1,6 +1,3 @@
-from foxes_cool import foxes
-
-
 def generate_text_test(prompt: str):
     """Generates test prompt optimization
     :return: 'optimized' prompt

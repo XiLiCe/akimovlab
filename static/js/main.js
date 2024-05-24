@@ -62,6 +62,7 @@ function updateProgress() {
 
 document.getElementById("generate").addEventListener("click", function () {
   first_image = true;
+  document.getElementById("generate").toggleAttribute("disabled");
   sendRequest("/api/get_image", function (result) {
     let response = result;
     setInnerHTML(
@@ -72,6 +73,7 @@ document.getElementById("generate").addEventListener("click", function () {
     document.querySelector("#optimized-image img").setAttribute("src", response.optimized_image);
     document.getElementById("images").classList.remove("hidden");
     first_image = false;
+    document.getElementById("generate").toggleAttribute("disabled");
   });
   updateProgress();
 });
