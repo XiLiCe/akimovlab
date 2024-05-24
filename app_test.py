@@ -8,16 +8,16 @@ import requests
 import base64
 from huggingface_hub import login
 
-login("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")
+login("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")
 
 
 app = Flask(__name__)
 
-SD_URL = "http://26.125.68.132:7860"
+SD_URL = "http://localhost:7860"
 SD_PROGRESS_ENDPOINT = "/sdapi/v1/progress"
 SD_TTI_ENDPOINT = "/sdapi/v1/txt2img"
-SD_MODEL_NAME = "tPonynai3_v41OptimizedFromV4"
-MODEL_PATH = "modellama"
+SD_MODEL_NAME = "v2-1_768-ema-pruned"
+MODEL_PATH = "LisiyLexa/optimist_llama"
 
 
 MODEL = AutoPeftModelForCausalLM.from_pretrained(
