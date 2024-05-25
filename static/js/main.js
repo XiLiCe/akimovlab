@@ -1,7 +1,10 @@
 var first_image = true;
+var generate_button = document.getElementById("generate");
 
 function sendRequest(route, resultHandler) {
   // Get the data to send to the server
+  // Route: route to send request
+  // resultHander: function called after getting response
   var settings = {
     sampler_name: document.getElementById("setting-sampler").value,
     steps: document.getElementById("setting-steps").value,
@@ -10,7 +13,6 @@ function sendRequest(route, resultHandler) {
     cfg_scale: document.getElementById("setting-cfg").value,
     seed: document.getElementById("setting-seed").value,
   };
-  console.log(settings);
   var data = {
     user_prompt: document.getElementById("prompt").value,
     settings: settings,
@@ -27,7 +29,6 @@ function sendRequest(route, resultHandler) {
     .then((response) => response.json())
     .then((result) => {
       // Handle the result
-      console.log(result);
       if ("error" in result) {
         alert(result.error);
         return;
@@ -47,22 +48,29 @@ function setInnerHTML(selectors, values) {
 }
 
 function updateProgress() {
-  fetch("/api/progress")
-    .then((response) => response.json())
-    .then((data) => {
-      let progress = data.progress;
-      // document.getElementById("progress-bar").style.width = progress + "%";
-      document.querySelector("#generation-progress > div").style.width = progress + "%";
-      document.querySelector("#generation-progress > div").innerHTML = progress + "%";
-      if (first_image && progress < 100) {
-        setTimeout(updateProgress, 500); // Check progress every second
-      }
-    });
+  sendRequest("/api/progress", function (result) {
+    let progress = result.progress.toFixed(2);
+    document.querySelector("#generation-progress > div").style.width = progress + "%";
+    document.querySelector("#generation-progress > div").innerHTML = progress + "%";
+    if (first_image && progress < 100) {
+      setTimeout(updateProgress, 1000); // Check progress every second
+    }
+  });
+  // fetch("/api/progress")
+  //   .then((response) => response.json())
+  //   .then((data) => {
+  //     let progress = data.progress.toFixed(2);
+  //     document.querySelector("#generation-progress > div").style.width = progress + "%";
+  //     document.querySelector("#generation-progress > div").innerHTML = progress + "%";
+  //     if (first_image && progress < 100) {
+  //       setTimeout(updateProgress, 1000); // Check progress every second
+  //     }
+  //   });
 }
 
-document.getElementById("generate").addEventListener("click", function () {
+generate_button.addEventListener("click", function () {
   first_image = true;
-  document.getElementById("generate").toggleAttribute("disabled");
+  generate_button.toggleAttribute("disabled");
   sendRequest("/api/get_image", function (result) {
     let response = result;
     setInnerHTML(
@@ -73,7 +81,7 @@ document.getElementById("generate").addEventListener("click", function () {
     document.querySelector("#optimized-image img").setAttribute("src", response.optimized_image);
     document.getElementById("images").classList.remove("hidden");
     first_image = false;
-    document.getElementById("generate").toggleAttribute("disabled");
+    generate_button.toggleAttribute("disabled");
   });
   updateProgress();
 });

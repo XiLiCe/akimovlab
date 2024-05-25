@@ -1,11 +1,11 @@
-def generate_text_test(prompt: str):
+def generate_text(prompt: str):
     """Generates test prompt optimization
     :return: 'optimized' prompt
     """
     return prompt + ", high quality, 4k, unreal engine, gred rudkowski, ultrarealistic"
 
 
-def generate_image_test(prompt: str) -> str:
+def generate_image(prompt: str) -> str:
     """Generates test image url
     :return: URL of image
     """
