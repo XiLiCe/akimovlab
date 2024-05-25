@@ -1,17 +1,17 @@
 from flask import render_template, url_for, request, jsonify
 from flask import Flask
-# from peft import AutoPeftModelForCausalLM
-# from transformers import AutoTokenizer
+from peft import AutoPeftModelForCausalLM
+from transformers import AutoTokenizer
 import traceback
 import test
 import requests
 import base64
-# import huggingface_hub as hh
+import huggingface_hub as hh
 
 
 app = Flask(__name__)
 
-SD_URL = "https://t1tqfxfyeir9.share.zrok.io"
+SD_URL = "http://localhost:7860"
 SD_PROGRESS_ENDPOINT = "/sdapi/v1/progress"
 SD_TTI_ENDPOINT = "/sdapi/v1/txt2img"
 SD_MODEL_NAME = "v2-1_768-ema-pruned"
@@ -68,7 +68,6 @@ def get_image(prompt: str, settings: dict) -> str:
 
     payload = {
         "prompt": prompt,
-        "negative_prompt": "NSFW",
         **settings,
     }
 
@@ -77,7 +76,7 @@ def get_image(prompt: str, settings: dict) -> str:
     r = response.json()
     print(r)
     if not "images" in r:
-        raise KeyError(f"Error in generating image:\n{r["err"]}")
+        raise KeyError(f"Error in generating image:\n{r['err']}")
     print(r["images"][0])
     image_data = base64.b64decode(r["images"][0])
     if SAVE_OUTPUT:
@@ -95,7 +94,7 @@ def handle_error(error):
     return jsonify(response), 500
 
 
-@app.route("/api/progress", methods=["GET"])
+@app.route("/api/progress", methods=["POST"])
 def get_sd_progress():
     response = requests.get(SD_URL + SD_PROGRESS_ENDPOINT)
     if response.status_code == 200:
@@ -116,7 +115,7 @@ def get_sd_progress():
 def generate_image():
     data = request.get_json()
     user_prompt = data["user_prompt"]
-    optimized_prompt = test.generate_text(user_prompt)
+    optimized_prompt = generate_text(user_prompt)
     user_image = get_image(user_prompt, data["settings"])
     optimized_image = get_image(optimized_prompt, data["settings"])
     return jsonify(

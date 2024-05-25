@@ -12,6 +12,7 @@ function sendRequest(route, resultHandler) {
     width: document.getElementById("setting-width").value,
     cfg_scale: document.getElementById("setting-cfg").value,
     seed: document.getElementById("setting-seed").value,
+    negative_prompt: "NSFW " + document.getElementById("negative_prompt").value,
   };
   var data = {
     user_prompt: document.getElementById("prompt").value,
