@@ -8,36 +8,59 @@ endblock %} {% block body %}
         <p>Get better images by optimizing your prompt</p>
       </div>
     </div>
+  </div>
+  <div class="container" id="text-generation">
     <div class="row">
       <div class="col-12">
-        <div class="input-group mb-3">
+        <div class="form-floating mb-3">
           <input
             type="text"
-            class="form-control"
+            class="form-control mb-2"
             id="prompt"
             placeholder="cute fox in the forest"
             value="cute fox in the forest"
-            aria-label="Enter prompt:"
-            aria-describedby="button-addon2" />
-          <button class="btn btn-outline-secondary" type="button" id="generate">Generate</button>
+            aria-label="Enter prompt:" />
+          <label for="prompt">Prompt</label>
+          <div class="form-floating mb-3">
+            <input
+              type="text"
+              class="form-control"
+              id="negative_prompt"
+              placeholder="concept art"
+              value="concept art"
+              aria-label="Enter prompt:" />
+            <label for="negative_prompt">Negative Prompt</label>
+          </div>
         </div>
       </div>
     </div>
-    <div class="row">
-      <div class="col-12">
-        <div class="input-group mb-3">
-          <input
-            type="text"
-            class="form-control"
-            id="negative_prompt"
-            placeholder="concept art"
-            value="concept art"
-            aria-label="Enter prompt:"
-            aria-describedby="button-addon2" />
-        </div>
+    <div class="row justify-content-center mb-3">
+      <div class="col-2">
+        <button class="btn btn-outline-secondary" type="button" id="generate-prompt">
+          Generate New Prompt
+        </button>
       </div>
     </div>
+  </div>
+  <div class="container hidden" id="new-prompt">
     <div class="row mb-3">
+      <div class="col">
+        <div class="form-floating">
+          <textarea readonly class="form-control" id="new-prompt-textarea"></textarea>
+          <label for="new-prompt-textarea">New prompt</label>
+        </div>
+      </div>
+    </div>
+    <div class="row justify-content-center mb-3">
+      <div class="col-2">
+        <button class="btn btn-outline-secondary" type="button" id="generate-image" disabled>
+          Generate Images
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="container mb-3 hidden" id="images-container">
+    <div class="row mb-3" id="progress-bar-row">
       <div class="col-12">
         <div
           class="progress"

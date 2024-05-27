@@ -1,5 +1,6 @@
 var first_image = true;
-var generate_button = document.getElementById("generate");
+var generate_text_button = document.getElementById("generate-prompt");
+var generate_image_button = document.getElementById("generate-image");
 
 function sendRequest(route, resultHandler) {
   // Get the data to send to the server
@@ -16,6 +17,7 @@ function sendRequest(route, resultHandler) {
   };
   var data = {
     user_prompt: document.getElementById("prompt").value,
+    optimized_prompt: document.getElementById("new-prompt-textarea").value,
     settings: settings,
   };
 
@@ -69,9 +71,35 @@ function updateProgress() {
   //   });
 }
 
-generate_button.addEventListener("click", function () {
+generate_text_button.addEventListener("click", function () {
+  document.getElementById("text-generation").classList.add("hidden");
+  document.getElementById("new-prompt").classList.remove("hidden");
+
+  sendRequest("/api/get_prompt", function (result) {
+    let response = result;
+    let textArray = response.optimized_prompt.split(" ");
+    console.log(textArray);
+    let wordIndex = 0;
+    function type() {
+      if (wordIndex < textArray.length) {
+        console.log("xdd");
+        document.getElementById("new-prompt-textarea").textContent += textArray[wordIndex] + " ";
+        wordIndex++;
+        setTimeout(type, 500);
+      } else {
+        document.getElementById("new-prompt-textarea").toggleAttribute("readonly");
+        document.getElementById("settings").classList.remove("hidden");
+        generate_image_button.classList.remove("hidden");
+        generate_image_button.toggleAttribute("disabled");
+      }
+    }
+    type();
+  });
+});
+
+generate_image_button.addEventListener("click", function () {
   first_image = true;
-  generate_button.toggleAttribute("disabled");
+  generate_image_button.toggleAttribute("disabled");
   sendRequest("/api/get_image", function (result) {
     let response = result;
     setInnerHTML(
@@ -82,7 +110,7 @@ generate_button.addEventListener("click", function () {
     document.querySelector("#optimized-image img").setAttribute("src", response.optimized_image);
     document.getElementById("images").classList.remove("hidden");
     first_image = false;
-    generate_button.toggleAttribute("disabled");
+    generate_image_button.toggleAttribute("disabled");
   });
   updateProgress();
 });
