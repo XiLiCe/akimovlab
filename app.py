@@ -1,13 +1,20 @@
 from flask import render_template, url_for, request, jsonify
 from flask import Flask
-from peft import AutoPeftModelForCausalLM
-from transformers import AutoTokenizer
+
 import traceback
-import test
 import requests
 import base64
-import huggingface_hub as hh
 
+TEST = False
+try:
+    from peft import AutoPeftModelForCausalLM
+    from transformers import AutoTokenizer
+    import huggingface_hub as hh
+except ImportError:
+    TEST = True
+    import test
+
+    print("Skipping Peft, Transformers, HF")
 
 app = Flask(__name__)
 
@@ -21,6 +28,7 @@ MODEL = None
 TOKENIZER = None
 
 SAVE_OUTPUT = False
+
 
 def init_models() -> None:
     """Initialize Text model and tokenizer"""
@@ -54,7 +62,7 @@ def generate_text(prompt: str) -> str:
     return new_prompt[len(formatted_prompt) : :]
 
 
-def get_image(prompt: str, settings: dict) -> str:
+def generate_image(prompt: str, settings: dict) -> str:
     """Generates image by given prompt\n
     `prompt` - text description of image\n
     `return` - string representation of base64-encoded image
@@ -111,19 +119,37 @@ def get_sd_progress():
     )
 
 
-@app.route("/api/get_image", methods=["POST"])
-def generate_image():
+@app.route("/api/get_prompt", methods=["POST"])
+def get_prompt():
     data = request.get_json()
     user_prompt = data["user_prompt"]
-    optimized_prompt = generate_text(user_prompt)
-    user_image = get_image(user_prompt, data["settings"])
-    optimized_image = get_image(optimized_prompt, data["settings"])
+    optimized_prompt = None
+    if TEST:
+        optimized_prompt = test.generate_text(user_prompt)
     return jsonify(
         {
             "user_prompt": user_prompt,
             "optimized_prompt": optimized_prompt,
-            "user_image": f"data:image/png;base64,{user_image}",
-            "optimized_image": f"data:image/png;base64,{optimized_image}",
+        }
+    )
+
+@app.route("/api/get_image", methods=["POST"])
+def get_image():
+    data = request.get_json()
+    user_prompt = data["user_prompt"]
+    optimized_prompt = data["optimized_prompt"]
+    if not TEST:
+        user_image = f"data:image/png;base64,{get_image(user_prompt, data["settings"])}"
+        optimized_image = f"data:image/png;base64,{get_image(optimized_prompt, data["settings"])}"
+    else:
+        user_image = test.generate_image(user_prompt, data["settings"])
+        optimized_image = test.generate_image(optimized_prompt, data["settings"])
+    return jsonify(
+        {
+            "user_prompt": user_prompt,
+            "optimized_prompt": optimized_prompt,
+            "user_image": user_image,
+            "optimized_image": optimized_image,
         }
     )
 
@@ -134,6 +160,7 @@ def index():
 
 
 if __name__ == "__main__":
-    init_models()
-    # app.run(debug=True)
-    app.run(host="0.0.0.0")
+    if not TEST:
+        init_models()
+    app.run(debug=True)
+    # app.run(host="0.0.0.0")
