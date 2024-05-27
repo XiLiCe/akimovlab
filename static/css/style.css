@@ -6,6 +6,18 @@
   --text-color: #eeeeee;
 }
 
+@keyframes hide-anim {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-550px);
+  }
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -29,6 +41,10 @@ h1 {
 
 .btn:hover {
   background-color: var(--btn-bg-color-hover);
+}
+
+#generate-prompt {
+  width: 100%;
 }
 
 html {
@@ -72,4 +88,8 @@ html {
   text-align: center;
   line-height: 2em;
   color: var(--content-bg-color);
+}
+
+.hide-anim {
+  animation: hide-anim 1s cubic-bezier(0.33, 1, 0.68, 1) 0s 1 normal forwards;
 }
