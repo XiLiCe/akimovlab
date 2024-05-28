@@ -1,22 +1,31 @@
-from flask import render_template, url_for, request, jsonify, Response, stream_with_context, current_app
+from flask import (
+    render_template,
+    url_for,
+    request,
+    jsonify,
+)
 from flask import Flask
-
+from flask_socketio import SocketIO, emit
 import traceback
 import requests
 import base64
+import time
 
 TEST = False
 try:
     from peft import AutoPeftModelForCausalLM
-    from transformers import AutoTokenizer
+    from transformers import AutoTokenizer, TextIteratorStreamer
     import huggingface_hub as hh
-except ImportError:
-    TEST = True
+except ImportError as e:
     import test
 
-    print("Skipping Peft, Transformers, HF")
+    TEST = True
+    print(e, traceback.format_exc())
+    print("RUNNING IN TEST MODE")
 
 app = Flask(__name__)
+socketio = SocketIO(app)
+
 SD_URL = "http://26.125.68.132:7860"
 SD_PROGRESS_ENDPOINT = "/sdapi/v1/progress"
 SD_TTI_ENDPOINT = "/sdapi/v1/txt2img"
@@ -36,7 +45,7 @@ def init_models() -> None:
 
     MODEL = AutoPeftModelForCausalLM.from_pretrained(
         MODEL_PATH,
-        load_in_4bit=True,
+        load_in_4bit=False,
     )
     TOKENIZER = AutoTokenizer.from_pretrained(MODEL_PATH)
 
@@ -51,23 +60,33 @@ def generate_text(prompt: str):
     """Optimize user's prompt
     :return: advanced prompt
     """
-    formatted_prompt = format_input(prompt)
-    inputs = TOKENIZER([formatted_prompt], return_tensors="pt").to("cuda")
+    if TEST:
+        new_prompt = test.generate_text(prompt)
+        for word in new_prompt.split():
+            yield word
+            time.sleep(0.5)
+    else:
+        formatted_prompt = format_input(prompt)
+        inputs = TOKENIZER([formatted_prompt], return_tensors="pt").to("cuda")
 
-    # outputs = MODEL.generate(
-    #     **inputs, max_new_tokens=64, use_cache=True, repetition_penalty=1.1
-    # )
-    from transformers import TextIteratorStreamer
-    text_streamer = TextIteratorStreamer(TOKENIZER)
-    # stream = TextStream(MODEL, TOKENIZER, max_new_tokens=64, use_cache=True, repetition_penalty=1.1)
+        # outputs = MODEL.generate(
+        #     **inputs, max_new_tokens=64, use_cache=True, repetition_penalty=1.1
+        # )
+        # new_prompt = TOKENIZER.batch_decode(outputs, skip_special_tokens=True)[0]
+        # return new_prompt[len(formatted_prompt) : :]
 
-    for output in MODEL.generate(**inputs, streamer = text_streamer, max_new_tokens = 64, use_cache=True, repetition_penalty=1.1):
-        generated_text = TOKENIZER.decode(output, skip_special_tokens=True)
-        # Yield the newly generated text part (word by word)
-        for word in generated_text[len(formatted_prompt):].split():
-            yield jsonify( { "text": f"{word} "})
-    # new_prompt = TOKENIZER.batch_decode(outputs, skip_special_tokens=True)[0]
-    # return new_prompt[len(formatted_prompt) : :]
+        text_streamer = TextIteratorStreamer(TOKENIZER)
+
+        for output in MODEL.generate(
+            **inputs,
+            streamer=text_streamer,
+            max_new_tokens=64,
+            use_cache=True,
+            repetition_penalty=1.1,
+        ):
+            generated_text = TOKENIZER.decode(output, skip_special_tokens=True)
+            for word in generated_text[len(formatted_prompt) :].split():
+                yield word
 
 
 def generate_image(prompt: str, settings: dict) -> str:
@@ -93,7 +112,6 @@ def generate_image(prompt: str, settings: dict) -> str:
     print(r)
     if not "images" in r:
         raise KeyError(f"Error in generating image:\n{r['err']}")
-    print(r["images"][0])
     image_data = base64.b64decode(r["images"][0])
     if SAVE_OUTPUT:
         with open(f"output_{prompt[-20:]}.png", "wb") as f:
@@ -129,31 +147,42 @@ def get_sd_progress():
 
 @app.route("/api/get_prompt", methods=["POST"])
 def get_prompt():
-    data = current_app.request.get_json()
+    data = request.get_json()
     user_prompt = data["user_prompt"]
     # optimized_prompt = None
     # if TEST:
     #     optimized_prompt = test.generate_text(user_prompt)
     # else:
     #     optimized_prompt = generate_text(user_prompt)
-    return Response(stream_with_context(generate_text(user_prompt)), content_type='application/json')
     yield jsonify(
         {
             "user_prompt": user_prompt,
         }
     )
 
+
+@socketio.on("generate_prompt")
+def handle_generate_prompt(data):
+    user_prompt = data["user_prompt"]
+    for word in generate_text(user_prompt):
+        emit("new_word", {"word": word})
+    else:
+        emit("end_new_prompt")
+
+
 @app.route("/api/get_image", methods=["POST"])
 def get_image():
     data = request.get_json()
     user_prompt = data["user_prompt"]
     optimized_prompt = data["optimized_prompt"]
-    if not TEST:
-        user_image = f"data:image/png;base64,{generate_image(user_prompt, data['settings'])}"
-        optimized_image = f"data:image/png;base64,{generate_image(optimized_prompt, data['settings'])}"
-    else:
+    if TEST:
         user_image = test.generate_image(user_prompt, data["settings"])
         optimized_image = test.generate_image(optimized_prompt, data["settings"])
+    else:
+        user_image = (
+            f"data:image/png;base64,{generate_image(user_prompt, data['settings'])}"
+        )
+        optimized_image = f"data:image/png;base64,{generate_image(optimized_prompt, data['settings'])}"
     return jsonify(
         {
             "user_prompt": user_prompt,
@@ -172,5 +201,5 @@ def index():
 if __name__ == "__main__":
     if not TEST:
         init_models()
-    app.run(debug=True)
+    socketio.run(app, debug=True)
     # app.run(host="0.0.0.0")

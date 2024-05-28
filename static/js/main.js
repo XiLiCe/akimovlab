@@ -1,3 +1,27 @@
+const socket = io();
+
+socket.on("connect", () => {
+  console.log("Connected to the server");
+});
+
+socket.on("new_word", (data) => {
+  const word = data.word;
+  document.getElementById("new-prompt-textarea").textContent += word + " ";
+});
+
+socket.on("end_new_prompt", () => {
+  document.getElementById("new-prompt-textarea").toggleAttribute("readonly");
+  document.getElementById("settings").classList.remove("hidden");
+  document.getElementById("images-container").classList.remove("hidden");
+  generate_image_button.classList.remove("hidden");
+  generate_image_button.toggleAttribute("disabled");
+  back_button.toggleAttribute("disabled");
+});
+
+socket.on("disconnect", () => {
+  console.log("Disconnected from the server");
+});
+
 var first_image = true;
 var generate_text_button = document.getElementById("generate-prompt");
 var generate_image_button = document.getElementById("generate-image");
@@ -60,69 +84,18 @@ function updateProgress() {
       setTimeout(updateProgress, 1000); // Check progress every second
     }
   });
-  // fetch("/api/progress")
-  //   .then((response) => response.json())
-  //   .then((data) => {
-  //     let progress = data.progress.toFixed(2);
-  //     document.querySelector("#generation-progress > div").style.width = progress + "%";
-  //     document.querySelector("#generation-progress > div").innerHTML = progress + "%";
-  //     if (first_image && progress < 100) {
-  //       setTimeout(updateProgress, 1000); // Check progress every second
-  //     }
-  //   });
 }
 
-generate_text_button.addEventListener("click", async function () {
+generate_text_button.addEventListener("click", function () {
   document.getElementById("text-generation").classList.add("hidden");
   document.getElementById("new-prompt").classList.remove("hidden");
-  const outputTextarea = document.getElementById("new-prompt-textarea");
-  $.ajax({
-    url: '/api/get_prompt',
-    type: 'POST',
-    data: { text: document.getElementById("prompt").value },
-    success: function(response) {
-        // Update the textarea incrementally
-        console.log(response.text);
-        $('#new-prompt-textarea').val(function(index, val){
-            return val + response.text;
-        });
-    },
-    error: function(error) {
-        console.log(error);
-    },
-    // Configure the AJAX request to accept JSON stream
-    dataType: 'json',
-    processData: false,
-    contentType: 'application/json'
-  });
-  // sendRequest("/api/get_prompt", function (result) {
-  //   let response = result;
-  //   let textArray = response.optimized_prompt.split(" ");
-     // Start reading the stream
-    // console.log(textArray);
-    // let wordIndex = 0;
-    // function type() {
-    //   if (wordIndex < textArray.length) {
-    //     console.log("xdd");
-    //     document.getElementById("new-prompt-textarea").textContent += textArray[wordIndex] + " ";
-    //     wordIndex++;
-    //     setTimeout(type, 500);
-    //   } else {
-    //     document.getElementById("new-prompt-textarea").toggleAttribute("readonly");
-    //     document.getElementById("settings").classList.remove("hidden");
-    //     document.getElementById("images-container").classList.remove("hidden");
-    //     generate_image_button.classList.remove("hidden");
-    //     generate_image_button.toggleAttribute("disabled");
-    //     back_button.toggleAttribute("disabled");
-    //   }
-    // }
-    // type();
-  // });
+  socket.emit("generate_prompt", { user_prompt: document.getElementById("prompt").value });
 });
 
 generate_image_button.addEventListener("click", function () {
   first_image = true;
   generate_image_button.toggleAttribute("disabled");
+  back_button.toggleAttribute("disabled");
   sendRequest("/api/get_image", function (result) {
     let response = result;
     setInnerHTML(
