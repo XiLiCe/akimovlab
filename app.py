@@ -1,4 +1,4 @@
-from flask import render_template, url_for, request, jsonify
+from flask import render_template, url_for, request, jsonify, Response, stream_with_context, current_app
 from flask import Flask
 
 import traceback
@@ -17,8 +17,7 @@ except ImportError:
     print("Skipping Peft, Transformers, HF")
 
 app = Flask(__name__)
-
-SD_URL = "http://localhost:7860"
+SD_URL = "http://26.125.68.132:7860"
 SD_PROGRESS_ENDPOINT = "/sdapi/v1/progress"
 SD_TTI_ENDPOINT = "/sdapi/v1/txt2img"
 SD_MODEL_NAME = "v2-1_768-ema-pruned"
@@ -48,18 +47,27 @@ def format_input(text: str) -> str:
     return f"<human>: {text}\n<bot>: "
 
 
-def generate_text(prompt: str) -> str:
+def generate_text(prompt: str):
     """Optimize user's prompt
     :return: advanced prompt
     """
     formatted_prompt = format_input(prompt)
     inputs = TOKENIZER([formatted_prompt], return_tensors="pt").to("cuda")
 
-    outputs = MODEL.generate(
-        **inputs, max_new_tokens=64, use_cache=True, repetition_penalty=1.1
-    )
-    new_prompt = TOKENIZER.batch_decode(outputs, skip_special_tokens=True)[0]
-    return new_prompt[len(formatted_prompt) : :]
+    # outputs = MODEL.generate(
+    #     **inputs, max_new_tokens=64, use_cache=True, repetition_penalty=1.1
+    # )
+    from transformers import TextIteratorStreamer
+    text_streamer = TextIteratorStreamer(TOKENIZER)
+    # stream = TextStream(MODEL, TOKENIZER, max_new_tokens=64, use_cache=True, repetition_penalty=1.1)
+
+    for output in MODEL.generate(**inputs, streamer = text_streamer, max_new_tokens = 64, use_cache=True, repetition_penalty=1.1):
+        generated_text = TOKENIZER.decode(output, skip_special_tokens=True)
+        # Yield the newly generated text part (word by word)
+        for word in generated_text[len(formatted_prompt):].split():
+            yield jsonify( { "text": f"{word} "})
+    # new_prompt = TOKENIZER.batch_decode(outputs, skip_special_tokens=True)[0]
+    # return new_prompt[len(formatted_prompt) : :]
 
 
 def generate_image(prompt: str, settings: dict) -> str:
@@ -121,15 +129,17 @@ def get_sd_progress():
 
 @app.route("/api/get_prompt", methods=["POST"])
 def get_prompt():
-    data = request.get_json()
+    data = current_app.request.get_json()
     user_prompt = data["user_prompt"]
-    optimized_prompt = None
-    if TEST:
-        optimized_prompt = test.generate_text(user_prompt)
-    return jsonify(
+    # optimized_prompt = None
+    # if TEST:
+    #     optimized_prompt = test.generate_text(user_prompt)
+    # else:
+    #     optimized_prompt = generate_text(user_prompt)
+    return Response(stream_with_context(generate_text(user_prompt)), content_type='application/json')
+    yield jsonify(
         {
             "user_prompt": user_prompt,
-            "optimized_prompt": optimized_prompt,
         }
     )
 
@@ -139,8 +149,8 @@ def get_image():
     user_prompt = data["user_prompt"]
     optimized_prompt = data["optimized_prompt"]
     if not TEST:
-        user_image = f"data:image/png;base64,{get_image(user_prompt, data["settings"])}"
-        optimized_image = f"data:image/png;base64,{get_image(optimized_prompt, data["settings"])}"
+        user_image = f"data:image/png;base64,{generate_image(user_prompt, data['settings'])}"
+        optimized_image = f"data:image/png;base64,{generate_image(optimized_prompt, data['settings'])}"
     else:
         user_image = test.generate_image(user_prompt, data["settings"])
         optimized_image = test.generate_image(optimized_prompt, data["settings"])
