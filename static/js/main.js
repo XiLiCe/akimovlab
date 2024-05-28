@@ -1,6 +1,7 @@
 var first_image = true;
 var generate_text_button = document.getElementById("generate-prompt");
 var generate_image_button = document.getElementById("generate-image");
+var back_button = document.getElementById("back-button");
 
 function sendRequest(route, resultHandler) {
   // Get the data to send to the server
@@ -71,30 +72,52 @@ function updateProgress() {
   //   });
 }
 
-generate_text_button.addEventListener("click", function () {
+generate_text_button.addEventListener("click", async function () {
   document.getElementById("text-generation").classList.add("hidden");
   document.getElementById("new-prompt").classList.remove("hidden");
-
-  sendRequest("/api/get_prompt", function (result) {
-    let response = result;
-    let textArray = response.optimized_prompt.split(" ");
-    console.log(textArray);
-    let wordIndex = 0;
-    function type() {
-      if (wordIndex < textArray.length) {
-        console.log("xdd");
-        document.getElementById("new-prompt-textarea").textContent += textArray[wordIndex] + " ";
-        wordIndex++;
-        setTimeout(type, 500);
-      } else {
-        document.getElementById("new-prompt-textarea").toggleAttribute("readonly");
-        document.getElementById("settings").classList.remove("hidden");
-        generate_image_button.classList.remove("hidden");
-        generate_image_button.toggleAttribute("disabled");
-      }
-    }
-    type();
+  const outputTextarea = document.getElementById("new-prompt-textarea");
+  $.ajax({
+    url: '/api/get_prompt',
+    type: 'POST',
+    data: { text: document.getElementById("prompt").value },
+    success: function(response) {
+        // Update the textarea incrementally
+        console.log(response.text);
+        $('#new-prompt-textarea').val(function(index, val){
+            return val + response.text;
+        });
+    },
+    error: function(error) {
+        console.log(error);
+    },
+    // Configure the AJAX request to accept JSON stream
+    dataType: 'json',
+    processData: false,
+    contentType: 'application/json'
   });
+  // sendRequest("/api/get_prompt", function (result) {
+  //   let response = result;
+  //   let textArray = response.optimized_prompt.split(" ");
+     // Start reading the stream
+    // console.log(textArray);
+    // let wordIndex = 0;
+    // function type() {
+    //   if (wordIndex < textArray.length) {
+    //     console.log("xdd");
+    //     document.getElementById("new-prompt-textarea").textContent += textArray[wordIndex] + " ";
+    //     wordIndex++;
+    //     setTimeout(type, 500);
+    //   } else {
+    //     document.getElementById("new-prompt-textarea").toggleAttribute("readonly");
+    //     document.getElementById("settings").classList.remove("hidden");
+    //     document.getElementById("images-container").classList.remove("hidden");
+    //     generate_image_button.classList.remove("hidden");
+    //     generate_image_button.toggleAttribute("disabled");
+    //     back_button.toggleAttribute("disabled");
+    //   }
+    // }
+    // type();
+  // });
 });
 
 generate_image_button.addEventListener("click", function () {
@@ -106,11 +129,24 @@ generate_image_button.addEventListener("click", function () {
       ["#user-prompt", "#optimized-prompt"],
       [response.user_prompt, response.optimized_prompt]
     );
+    first_image = false;
     document.querySelector("#user-image img").setAttribute("src", response.user_image);
     document.querySelector("#optimized-image img").setAttribute("src", response.optimized_image);
     document.getElementById("images").classList.remove("hidden");
-    first_image = false;
     generate_image_button.toggleAttribute("disabled");
+    back_button.toggleAttribute("disabled");
   });
   updateProgress();
+});
+
+back_button.addEventListener("click", function () {
+  document.getElementById("images-container").classList.add("hidden");
+  document.getElementById("new-prompt").classList.add("hidden");
+  document.getElementById("images").classList.add("hidden");
+  document.getElementById("text-generation").classList.remove("hidden");
+  document.getElementById("new-prompt-textarea").textContent = "";
+  generate_image_button.toggleAttribute("disabled");
+  back_button.toggleAttribute("disabled");
+
+  // location.reload();
 });
