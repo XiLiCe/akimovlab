@@ -10,11 +10,12 @@ import traceback
 import requests
 import base64
 import time
+import torch
 
 TEST = False
 try:
-    from peft import AutoPeftModelForCausalLM
-    from transformers import AutoTokenizer, TextIteratorStreamer
+    from peft import AutoPeftModelForCausalLM, PeftModel
+    from transformers import AutoTokenizer, TextStreamer, AutoModelForCausalLM, BitsAndBytesConfig
     import huggingface_hub as hh
 except ImportError as e:
     import test
@@ -25,6 +26,17 @@ except ImportError as e:
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+
+class MyStreamer(TextStreamer):
+    def __init__(self, tokenizer: AutoTokenizer, skip_prompt: bool = False, **decode_kwargs):
+        super().__init__(tokenizer, skip_prompt, **decode_kwargs)
+
+    def on_finalized_text(self, text: str, stream_end: bool = False):
+        socketio.emit("new_word", {"word": text.strip()})
+        print(text, flush=True, end="" if not stream_end else None)
+
+    def end(self):
+        super().end()
 
 SD_URL = "http://26.125.68.132:7860"
 SD_PROGRESS_ENDPOINT = "/sdapi/v1/progress"
@@ -75,18 +87,14 @@ def generate_text(prompt: str):
         # new_prompt = TOKENIZER.batch_decode(outputs, skip_special_tokens=True)[0]
         # return new_prompt[len(formatted_prompt) : :]
 
-        text_streamer = TextIteratorStreamer(TOKENIZER)
-
-        for output in MODEL.generate(
+        text_streamer = MyStreamer(TOKENIZER, skip_prompt=True)
+        MODEL.generate(
             **inputs,
             streamer=text_streamer,
-            max_new_tokens=64,
+            max_new_tokens=72,
             use_cache=True,
-            repetition_penalty=1.1,
-        ):
-            generated_text = TOKENIZER.decode(output, skip_special_tokens=True)
-            for word in generated_text[len(formatted_prompt) :].split():
-                yield word
+            repetition_penalty=1.25,
+        )
 
 
 def generate_image(prompt: str, settings: dict) -> str:
@@ -197,9 +205,10 @@ def get_image():
 def index():
     return render_template("index.html")
 
+if not TEST:
+    init_models()
 
 if __name__ == "__main__":
-    if not TEST:
-        init_models()
-    socketio.run(app, debug=True)
+    
+    socketio.run(app, debug=True, host="0.0.0.0")
     # app.run(host="0.0.0.0")
