@@ -1,34 +1,43 @@
 from flask import (
+    Flask,
     render_template,
     url_for,
     request,
     jsonify,
 )
-from flask import Flask
 from flask_socketio import SocketIO, emit
+
+from peft import AutoPeftModelForCausalLM
+from transformers import AutoTokenizer, TextStreamer
+import huggingface_hub as hh
+
 import traceback
 import requests
 import base64
+import test
 import time
-import torch
-
-TEST = False
-try:
-    from peft import AutoPeftModelForCausalLM, PeftModel
-    from transformers import AutoTokenizer, TextStreamer, AutoModelForCausalLM, BitsAndBytesConfig
-    import huggingface_hub as hh
-except ImportError as e:
-    import test
-
-    TEST = True
-    print(e, traceback.format_exc())
-    print("RUNNING IN TEST MODE")
+import os
 
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+SD_URL = os.getenv("SD_URL")
+SD_PROGRESS_ENDPOINT = os.getenv("SD_PROGRESS_ENDPOINT")
+SD_TTI_ENDPOINT = os.getenv("SD_TTI_ENDPOINT")
+SD_MODEL_NAME = os.getenv("SD_MODEL_NAME")
+MODEL_PATH = os.getenv("MODEL_PATH")
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+MODEL = None
+TOKENIZER = None
+
+SAVE_OUTPUT = False
+TEST = False
+
+
 class MyStreamer(TextStreamer):
-    def __init__(self, tokenizer: AutoTokenizer, skip_prompt: bool = False, **decode_kwargs):
+    def __init__(
+        self, tokenizer: AutoTokenizer, skip_prompt: bool = False, **decode_kwargs
+    ):
         super().__init__(tokenizer, skip_prompt, **decode_kwargs)
 
     def on_finalized_text(self, text: str, stream_end: bool = False):
@@ -38,28 +47,28 @@ class MyStreamer(TextStreamer):
     def end(self):
         super().end()
 
-SD_URL = "http://26.125.68.132:7860"
-SD_PROGRESS_ENDPOINT = "/sdapi/v1/progress"
-SD_TTI_ENDPOINT = "/sdapi/v1/txt2img"
-SD_MODEL_NAME = "v2-1_768-ema-pruned"
-MODEL_PATH = "LisiyLexa/optimist_llama"
-HUGGINGFACE_TOKEN = "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"
-MODEL = None
-TOKENIZER = None
-
-SAVE_OUTPUT = False
-
 
 def init_models() -> None:
     """Initialize Text model and tokenizer"""
-    global MODEL, TOKENIZER
+    global MODEL, TOKENIZER, TEST
     hh.login(HUGGINGFACE_TOKEN)
+    try:
+        MODEL = AutoPeftModelForCausalLM.from_pretrained(
+            MODEL_PATH,
+            load_in_4bit=False,
+        )
+        TOKENIZER = AutoTokenizer.from_pretrained(MODEL_PATH)
 
-    MODEL = AutoPeftModelForCausalLM.from_pretrained(
-        MODEL_PATH,
-        load_in_4bit=False,
-    )
-    TOKENIZER = AutoTokenizer.from_pretrained(MODEL_PATH)
+    except RuntimeError as e:
+        TEST = True
+        print(e, traceback.format_exc())
+        print("NO GPU. RUNNING IN TEST MODE")
+
+    # Set StableDiffusion model to SD_MODEL_NAME
+    opt = requests.get(url=f"{SD_URL}/sdapi/v1/options")
+    opt_json = opt.json()
+    opt_json["sd_model_checkpoint"] = SD_MODEL_NAME
+    requests.post(url=f"{SD_URL}/sdapi/v1/options", json=opt_json)
 
 
 def format_input(text: str) -> str:
@@ -91,7 +100,7 @@ def generate_text(prompt: str):
         MODEL.generate(
             **inputs,
             streamer=text_streamer,
-            max_new_tokens=72,
+            max_new_tokens=56,
             use_cache=True,
             repetition_penalty=1.25,
         )
@@ -102,12 +111,6 @@ def generate_image(prompt: str, settings: dict) -> str:
     `prompt` - text description of image\n
     `return` - string representation of base64-encoded image
     """
-
-    # Set StableDiffusion model to SD_MODEL_NAME
-    # opt = requests.get(url=f"{SD_URL}/sdapi/v1/options")
-    # opt_json = opt.json()
-    # opt_json["sd_model_checkpoint"] = SD_MODEL_NAME
-    # requests.post(url=f"{SD_URL}/sdapi/v1/options", json=opt_json)
 
     payload = {
         "prompt": prompt,
@@ -157,11 +160,6 @@ def get_sd_progress():
 def get_prompt():
     data = request.get_json()
     user_prompt = data["user_prompt"]
-    # optimized_prompt = None
-    # if TEST:
-    #     optimized_prompt = test.generate_text(user_prompt)
-    # else:
-    #     optimized_prompt = generate_text(user_prompt)
     yield jsonify(
         {
             "user_prompt": user_prompt,
@@ -205,10 +203,10 @@ def get_image():
 def index():
     return render_template("index.html")
 
+
 if not TEST:
     init_models()
 
 if __name__ == "__main__":
-    
     socketio.run(app, debug=True, host="0.0.0.0")
     # app.run(host="0.0.0.0")
