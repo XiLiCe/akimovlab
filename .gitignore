@@ -2,3 +2,4 @@
 modellama/
 __pycache__/
 /*.png
+.env
