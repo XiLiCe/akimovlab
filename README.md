@@ -9,7 +9,6 @@ To run Optimist, you will need the following software and libraries installed:
 
 - Python 3.11 or higher
 - Flask
-- PyTorch
 - Stable Diffusion client
 - Other dependencies listed in requirements.txt
 
@@ -23,31 +22,36 @@ git clone https://github.com/yourusername/optimist.git
 cd optimist
 ```
 
-2. Create and activate a virtual environment (optional but recommended):
+2. Configure the application:
+
+- Set up environment variables and configurations as needed. You might need to create a .env file in the root directory and specify variables like API keys, model paths, etc.(check .env.example file)
+
+### Run the application:
+
+- Run `create_venv.bat` file to automatically create virtual environment, install packages and run app
+
+**-OR-**
+
+1. Create and activate a virtual environment (optional but recommended):
 
 ```sh
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 ```
 
-3. Install the required Python packages:
+2. Install the required Python packages:
 
 ```sh
 pip install -r requirements.txt
 ```
 
-4. Configure the application:
-
-- Set up environment variables and configurations as needed. You might need to create a .env file in the root directory and specify variables like API keys, model paths, etc.
-Run the application:
-
-5. Start the backend server:
+3. Start the backend server:
 
 ```sh
 python app.py
 ```
 
-6. Open your browser and navigate to http://localhost:5000 to access the application.
+Open your browser and navigate to http://localhost:5000 to access the application.
 
 ## Usage
 1. Input your prompt:
