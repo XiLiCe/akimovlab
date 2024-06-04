@@ -11,12 +11,16 @@ from peft import AutoPeftModelForCausalLM
 from transformers import AutoTokenizer, TextStreamer
 import huggingface_hub as hh
 
+from dotenv import load_dotenv
+
 import traceback
 import requests
 import base64
 import test
 import time
 import os
+
+load_dotenv()
 
 app = Flask(__name__)
 socketio = SocketIO(app)
