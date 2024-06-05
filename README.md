@@ -19,7 +19,7 @@ Follow these steps to set up and run Optimist on your local machine:
 
 ```sh
 git clone https://github.com/XiLiCe/akimovlab.git
-cd optimist
+cd akimovlab
 ```
 
 2. Configure the application:
