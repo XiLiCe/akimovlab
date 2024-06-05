@@ -18,7 +18,7 @@ Follow these steps to set up and run Optimist on your local machine:
 1. Clone the repository:
 
 ```sh
-git clone https://github.com/yourusername/optimist.git
+git clone https://github.com/XiLiCe/akimovlab.git
 cd optimist
 ```
 
