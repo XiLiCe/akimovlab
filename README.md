@@ -1,4 +1,4 @@
-## Optimist
+## Optimist                                                  
 Optimist is a web application designed for prompt optimization in image generation. It provides tools and features to enhance and fine-tune text prompts to achieve better results from image generation models.
 
 ## Description
